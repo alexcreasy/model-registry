@@ -83,3 +83,32 @@ func (app *App) CreateRegisteredModelHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 }
+
+func (app *App) GetRegisteredModelHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	client, ok := r.Context().Value(httpClientKey).(integrations.HTTPClientInterface)
+	if !ok {
+		app.serverErrorResponse(w, r, errors.New("REST client not found"))
+		return
+	}
+
+	model, err := data.GetRegisteredModel(client, ps.ByName(RegisteredModelId))
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	fmt.Printf("%#v\n", model)
+
+	if _, ok := model.GetNameOk(); !ok {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	result := Envelope{
+		"registered_model": model,
+	}
+
+	err = app.WriteJSON(w, http.StatusOK, result, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

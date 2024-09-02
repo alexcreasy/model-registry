@@ -16,9 +16,11 @@ const (
 	Version              = "1.0.0"
 	PathPrefix           = "/api/v1"
 	ModelRegistryId      = "model_registry_id"
+	RegisteredModelId    = "registered_model_id"
 	HealthCheckPath      = PathPrefix + "/healthcheck/"
 	ModelRegistry        = PathPrefix + "/model-registry/"
-	RegisteredModelsPath = ModelRegistry + ":" + ModelRegistryId + "/registered_models"
+	RegisteredModelsPath = ModelRegistry + ":" + ModelRegistryId + "/registered_models/"
+	RegisteredModelPath  = RegisteredModelsPath + ":" + RegisteredModelId
 )
 
 type App struct {
@@ -59,6 +61,7 @@ func (app *App) Routes() http.Handler {
 	// HTTP client routes
 	router.GET(HealthCheckPath, app.HealthcheckHandler)
 	router.GET(RegisteredModelsPath, app.AttachRESTClient(app.GetRegisteredModelsHandler))
+	router.GET(RegisteredModelPath, app.AttachRESTClient(app.GetRegisteredModelHandler))
 	router.POST(RegisteredModelsPath, app.AttachRESTClient(app.CreateRegisteredModelHandler))
 
 	// Kubernetes client routes
