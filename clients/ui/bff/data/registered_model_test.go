@@ -53,3 +53,23 @@ func TestCreateRegisteredModel(t *testing.T) {
 
 	mockClient.AssertExpectations(t)
 }
+
+func TestGetRegisteredModel(t *testing.T) {
+	gofakeit.Seed(0)
+
+	expected := mocks.GenerateRegisteredModel()
+
+	mockData, err := json.Marshal(expected)
+	assert.NoError(t, err)
+
+	mockClient := new(mocks.MockHTTPClient)
+	mockClient.On("GET", registerModelPath+"/"+expected.GetId()).Return(mockData, nil)
+
+	actual, err := GetRegisteredModel(mockClient, expected.GetId())
+	assert.NoError(t, err)
+	assert.NotNil(t, actual)
+	assert.Equal(t, *expected.Name, *actual.Name)
+	assert.Equal(t, *expected.Owner, *actual.Owner)
+
+	mockClient.AssertExpectations(t)
+}

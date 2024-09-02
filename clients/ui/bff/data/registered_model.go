@@ -39,3 +39,18 @@ func CreateRegisteredModel(client integrations.HTTPClientInterface, jsonData []b
 
 	return &model, nil
 }
+
+func GetRegisteredModel(client integrations.HTTPClientInterface, id string) (*openapi.RegisteredModel, error) {
+	responseData, err := client.GET(registerModelPath + "/" + id)
+
+	if err != nil {
+		return nil, fmt.Errorf("error fetching registered model: %w", err)
+	}
+
+	var model openapi.RegisteredModel
+	if err := json.Unmarshal(responseData, &model); err != nil {
+		return nil, fmt.Errorf("error decoding response data: %w", err)
+	}
+
+	return &model, nil
+}
