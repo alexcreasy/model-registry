@@ -110,3 +110,50 @@ func (app *App) GetRegisteredModelHandler(w http.ResponseWriter, r *http.Request
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *App) UpdateRegisteredModelHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	client, ok := r.Context().Value(httpClientKey).(integrations.HTTPClientInterface)
+	if !ok {
+		app.serverErrorResponse(w, r, errors.New("REST client not found"))
+		return
+	}
+
+	var model openapi.RegisteredModel
+	if err := json.NewDecoder(r.Body).Decode(&model); err != nil {
+		app.serverErrorResponse(w, r, fmt.Errorf("error decoding JSON:: %v", err.Error()))
+		return
+	}
+
+	if err := validation.ValidateRegisteredModel(model); err != nil {
+		app.badRequestResponse(w, r, fmt.Errorf("validation error:: %v", err.Error()))
+		return
+	}
+
+	jsonData, err := json.Marshal(model)
+	if err != nil {
+		app.serverErrorResponse(w, r, fmt.Errorf("error marshaling model to JSON: %w", err))
+		return
+	}
+
+	patchedModel, err := app.modelRegistryClient.UpdateRegisteredModel(client, model.GetId(), jsonData)
+	if err != nil {
+		var httpErr *integrations.HTTPError
+		if errors.As(err, &httpErr) {
+			app.errorResponse(w, r, httpErr)
+		} else {
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	if patchedModel == nil {
+		app.serverErrorResponse(w, r, fmt.Errorf("patched model is nil"))
+		return
+	}
+
+	err = app.WriteJSON(w, http.StatusOK, patchedModel, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, fmt.Errorf("error writing JSON"))
+		return
+	}
+}

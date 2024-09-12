@@ -133,3 +133,7 @@ func TestCreateRegisteredModelHandler(t *testing.T) {
 	assert.Equal(t, expected.Name, registeredModelRes.Name)
 	assert.NotEmpty(t, rs.Header.Get("location"))
 }
+
+func TestUpdateRegisteredModelHandler(t *testing.T) {
+	mockMRClient, _ := mocks.NewModelRegistryClient(nil)
+}
