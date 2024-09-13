@@ -98,3 +98,47 @@ func TestCreateModelVersionHandler(t *testing.T) {
 	assert.NotEmpty(t, rs.Header.Get("Location"))
 	assert.Equal(t, rs.Header.Get("Location"), "/api/v1/model_registry/model-registry/model_versions/1")
 }
+
+func TestUpdateModelVersionHandler(t *testing.T) {
+	mockMRClient, _ := mocks.NewModelRegistryClient(nil)
+	mockClient := new(mocks.MockHTTPClient)
+
+	testApp := App{
+		modelRegistryClient: mockMRClient,
+	}
+
+	newVersion := openapi.NewModelVersion("Model One", "1")
+	newEnvelope := ModelVersionEnvelope{Data: newVersion}
+
+	newEnvelopeJSON, err := json.Marshal(newEnvelope)
+	assert.NoError(t, err)
+
+	reqBody := bytes.NewReader(newEnvelopeJSON)
+
+	req, err := http.NewRequest(http.MethodPatch,
+		"/api/v1/model_registry/model-registry/model_versions/1", reqBody)
+	assert.NoError(t, err)
+
+	ctx := context.WithValue(req.Context(), httpClientKey, mockClient)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+
+	testApp.UpdateModelVersionHandler(rr, req, nil)
+	rs := rr.Result()
+
+	defer rs.Body.Close()
+
+	body, err := io.ReadAll(rs.Body)
+	assert.NoError(t, err)
+	var actual ModelVersionEnvelope
+	err = json.Unmarshal(body, &actual)
+	assert.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	expectedModel := mocks.GetModelVersionMocks()[0]
+	expected := ModelVersionEnvelope{Data: &expectedModel}
+
+	assert.Equal(t, expected.Data.Name, actual.Data.Name)
+}
