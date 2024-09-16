@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/julienschmidt/httprouter"
 	"github.com/kubeflow/model-registry/pkg/openapi"
 	"github.com/kubeflow/model-registry/ui/bff/internals/mocks"
 	"github.com/stretchr/testify/assert"
@@ -223,4 +224,60 @@ func TestGetAllModelVersionsForRegisteredModelHandler(t *testing.T) {
 	assert.Equal(t, expected.Data.PageSize, actual.Data.PageSize)
 	assert.Equal(t, expected.Data.NextPageToken, actual.Data.NextPageToken)
 	assert.Equal(t, len(expected.Data.Items), len(actual.Data.Items))
+}
+
+func TestCreateModelVersionForRegisteredModelHandler(t *testing.T) {
+	mockMRClient, _ := mocks.NewModelRegistryClient(nil)
+	mockClient := new(mocks.MockHTTPClient)
+
+	testApp := App{
+		modelRegistryClient: mockMRClient,
+	}
+
+	newVersion := openapi.NewModelVersion("Model One", "1")
+	reqEnvelope := ModelVersionEnvelope{Data: newVersion}
+
+	reqJSON, err := json.Marshal(reqEnvelope)
+	assert.NoError(t, err)
+
+	reqBody := bytes.NewReader(reqJSON)
+
+	req, err := http.NewRequest(http.MethodPost, "/api/v1/model_registry/model-registry/registered_models/1/versions", reqBody)
+	assert.NoError(t, err)
+
+	ctx := context.WithValue(req.Context(), httpClientKey, mockClient)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+
+	ps := httprouter.Params{
+		httprouter.Param{
+			Key:   ModelRegistryId,
+			Value: "model-registry",
+		},
+		httprouter.Param{
+			Key:   RegisteredModelId,
+			Value: "1",
+		},
+	}
+
+	testApp.CreateModelVersionForRegisteredModelHandler(rr, req, ps)
+	rs := rr.Result()
+
+	defer rs.Body.Close()
+
+	body, err := io.ReadAll(rs.Body)
+	assert.NoError(t, err)
+	var actual ModelVersionEnvelope
+	err = json.Unmarshal(body, &actual)
+	assert.NoError(t, err)
+
+	assert.Equal(t, http.StatusCreated, rr.Code)
+
+	expectedVersion := mocks.GetModelVersionMocks()[0]
+
+	expected := ModelVersionEnvelope{Data: &expectedVersion}
+
+	assert.Equal(t, expected.Data.Name, actual.Data.Name)
+	assert.Equal(t, rs.Header.Get("Location"), "/api/v1/model_registry/model-registry/model_versions/1")
 }
