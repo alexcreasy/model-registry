@@ -183,3 +183,44 @@ func TestUpdateRegisteredModelHandler(t *testing.T) {
 
 	assert.Equal(t, expected.Data.Name, actual.Data.Name)
 }
+
+func TestGetAllModelVersionsForRegisteredModelHandler(t *testing.T) {
+	mockMRClient, _ := mocks.NewModelRegistryClient(nil)
+	mockClient := new(mocks.MockHTTPClient)
+
+	testApp := App{
+		modelRegistryClient: mockMRClient,
+	}
+
+	req, err := http.NewRequest(http.MethodGet, "/api/v1/model_registry/model-registry/registered_models/1/versions", nil)
+	assert.NoError(t, err)
+
+	ctx := context.WithValue(req.Context(), httpClientKey, mockClient)
+	req = req.WithContext(ctx)
+
+	rr := httptest.NewRecorder()
+
+	testApp.GetAllModelVersionsForRegisteredModelHandler(rr, req, nil)
+	rs := rr.Result()
+
+	defer rs.Body.Close()
+
+	body, err := io.ReadAll(rs.Body)
+	assert.NoError(t, err)
+	var actual ModelVersionListEnvelope
+	err = json.Unmarshal(body, &actual)
+	assert.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	versionList := mocks.GetModelVersionListMock()
+
+	expected := ModelVersionListEnvelope{
+		Data: &versionList,
+	}
+
+	assert.Equal(t, expected.Data.Size, actual.Data.Size)
+	assert.Equal(t, expected.Data.PageSize, actual.Data.PageSize)
+	assert.Equal(t, expected.Data.NextPageToken, actual.Data.NextPageToken)
+	assert.Equal(t, len(expected.Data.Items), len(actual.Data.Items))
+}
